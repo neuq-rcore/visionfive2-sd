@@ -104,7 +104,7 @@ fn send_cmd<T: SDIo, S: SleepOps>(
                     if raw_int_status.rxdr() {
                         #[cfg(not(feature = "bequietpls"))]
                         debug!("RXDR....");
-                        while fifo_filled_cnt(io) >= 2 {
+                        while fifo_filled_cnt(io) >= 2 && buf_offset < buffer.len() {
                             let data = read_fifo(io, fifo_addr);
                             for i in 0..8 {
                                 buffer[buf_offset] = (data >> (i * 8)) as u8;
