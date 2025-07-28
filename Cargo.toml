@@ -13,3 +13,4 @@ bitfield-struct = "0.8.0"   # no unsafe coe
 
 [features]
 alloc = []
+bequietpls = []

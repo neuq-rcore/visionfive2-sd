@@ -69,16 +69,22 @@ fn send_cmd<T: SDIo, S: SleepOps>(
         let res = wait_ms_util_can_send_data::<_, S>(io);
         assert!(res)
     }
+
+    #[cfg(not(feature = "bequietpls"))]
     info!("send cmd type:{:?}, value:{:#?}", cmd_type, cmd);
     // write arg
     write_reg(io, ARG_REG, arg.into());
     write_reg(io, CMD_REG, cmd.into());
     // Wait for cmd accepted
     let command_accept = wait_ms_util_can_send_cmd::<_, S>(io);
+
+    #[cfg(not(feature = "bequietpls"))]
     info!("command accepted {}", command_accept);
 
     if cmd.response_expect() {
         let res = wait_ms_util_response::<_, S>(io);
+
+        #[cfg(not(feature = "bequietpls"))]
         debug!("wait_ms_util_response:{:?}", res);
     }
 
@@ -86,6 +92,7 @@ fn send_cmd<T: SDIo, S: SleepOps>(
         let mut fifo_addr = FIFO_DATA_REG;
         match data_trans_type {
             DataTransType::Read(buffer) => {
+                #[cfg(not(feature = "bequietpls"))]
                 trace!("data_expected read....");
                 let mut buf_offset = 0;
                 S::sleep_ms_until(250, || {
@@ -94,6 +101,7 @@ fn send_cmd<T: SDIo, S: SleepOps>(
                     let int = raw_int_status_reg.int_status();
                     let mut raw_int_status = RawInterrupt::from(int);
                     if raw_int_status.rxdr() {
+                        #[cfg(not(feature = "bequietpls"))]
                         debug!("RXDR....");
                         while fifo_filled_cnt(io) >= 2 {
                             let data = read_fifo(io, fifo_addr);
@@ -106,6 +114,7 @@ fn send_cmd<T: SDIo, S: SleepOps>(
                     }
                     raw_int_status.dto() || raw_int_status.have_error()
                 });
+                #[cfg(not(feature = "bequietpls"))]
                 info!(
                     "buf_offset:{}, receive {} bytes",
                     buf_offset,
@@ -118,6 +127,7 @@ fn send_cmd<T: SDIo, S: SleepOps>(
                     let raw_int_status = read_reg(io, RAW_INT_STATUS_REG);
                     let mut raw_int_status = RawInterrupt::from(raw_int_status as u16);
                     if raw_int_status.txdr() {
+                        #[cfg(not(feature = "bequietpls"))]
                         debug!("TXDR....");
                         // Hard coded FIFO depth
                         while fifo_filled_cnt(io) < 120 && buf_offset < buffer.len() {
@@ -132,12 +142,14 @@ fn send_cmd<T: SDIo, S: SleepOps>(
                     }
                     raw_int_status.dto() || raw_int_status.have_error()
                 });
+                #[cfg(not(feature = "bequietpls"))]
                 info!("buf_offset:{}, send {} bytes", buf_offset, buf_offset * 8);
             }
             _ => {
                 panic!("Not implemented")
             }
         }
+        #[cfg(not(feature = "bequietpls"))]
         debug!("Current FIFO count: {}", fifo_filled_cnt(io));
     }
     // Clear interrupt by writing 1
@@ -193,10 +205,12 @@ fn reset_clock<T: SDIo, S: SleepOps>(io: &mut T) {
         CmdArg::new(0),
         DataTransType::None,
     );
+    #[cfg(not(feature = "bequietpls"))]
     info!(
         "now clk enable {:#?}",
         ClockEnableReg::from(read_reg(io, CLOCK_ENABLE_REG))
     );
+    #[cfg(not(feature = "bequietpls"))]
     pprintln!("reset clock success");
 }
 
@@ -205,6 +219,8 @@ fn reset_fifo<T: SDIo>(io: &mut T) {
     // todo!(why write to fifo data)?
     // write_reg(CTRL_REG,ctrl.raw());
     write_reg(io, FIFO_DATA_REG, ctrl.into());
+    #[cfg(not(feature = "bequietpls"))]
+
     pprintln!("reset fifo success");
 }
 
@@ -242,8 +258,11 @@ fn test_read<T: SDIo, S: SleepOps>(io: &mut T) {
         DataTransType::Read(&mut buffer),
     )
     .unwrap();
+    #[cfg(not(feature = "bequietpls"))]
     info!("Current FIFO count: {}", fifo_filled_cnt(io));
     let byte_slice = buffer.as_slice();
+
+    #[cfg(not(feature = "bequietpls"))]
     pprintln!("sd header 16bytes: {:x?}", &byte_slice[..2]);
 }
 
@@ -264,6 +283,7 @@ fn test_write_read<T: SDIo, S: SleepOps>(io: &mut T) {
         DataTransType::Write(&buffer),
     )
     .unwrap();
+    #[cfg(not(feature = "bequietpls"))]
     // info!("resp csr: {:#?}",resp[0]); //csr reg
     info!("Current FIFO count: {}", fifo_filled_cnt(io));
     // read a block data
@@ -278,9 +298,11 @@ fn test_write_read<T: SDIo, S: SleepOps>(io: &mut T) {
         DataTransType::Read(&mut buffer),
     )
     .unwrap();
+    #[cfg(not(feature = "bequietpls"))]
     // info!("resp csr: {:#?}",resp[0]); //csr reg
     info!("Current FIFO count: {}", fifo_filled_cnt(io));
     let byte_slice = buffer.as_slice();
+    #[cfg(not(feature = "bequietpls"))]
     debug!("Head 16 bytes: {:#x?}", &byte_slice[..2]);
 }
 
@@ -302,9 +324,12 @@ fn check_bus_width<T: SDIo, S: SleepOps>(io: &mut T, rca: u32) -> usize {
         CmdArg::new(0),
         DataTransType::Read(&mut buffer),
     );
+    #[cfg(not(feature = "bequietpls"))]
     info!("Current FIFO count: {}", fifo_filled_cnt(io)); //2
     let resp = u64::from_be(read_fifo(io, FIFO_DATA_REG));
+    #[cfg(not(feature = "bequietpls"))]
     pprintln!("Bus width supported: {:b}", (resp >> 48) & 0xF);
+    #[cfg(not(feature = "bequietpls"))]
     info!("Current FIFO count: {}", fifo_filled_cnt(io)); //0
     0
 }
@@ -328,6 +353,7 @@ fn select_card<T: SDIo, S: SleepOps>(io: &mut T, rca: u32) {
     let cmd_arg = CmdArg::new(rca << 16);
     let resp = send_cmd::<_, S>(io, Cmd::SelectCard, cmd7, cmd_arg, DataTransType::None).unwrap();
     let r1 = resp[0];
+    #[cfg(not(feature = "bequietpls"))]
     info!("status: {:b}", r1);
 }
 
@@ -342,7 +368,11 @@ fn check_rca<T: SDIo, S: SleepOps>(io: &mut T) -> u32 {
     )
     .unwrap();
     let rca = resp[0] >> 16;
+
+    #[cfg(not(feature = "bequietpls"))]
     info!("rca: {:#x}", rca);
+
+    #[cfg(not(feature = "bequietpls"))]
     info!("card status: {:b}", resp[0] & 0xffff);
     rca
 }
@@ -394,6 +424,8 @@ fn check_big_support<T: SDIo, S: SleepOps>(io: &mut T) -> bool {
         let cmd41_arg = CmdArg::new((1 << 30) | (1 << 24) | 0xFF8000);
         let resp =
             send_cmd::<_, S>(io, Cmd::SdSendOpCond, cmd41, cmd41_arg, DataTransType::None).unwrap();
+
+        #[cfg(not(feature = "bequietpls"))]
         info!("ocr: {:#x?}", resp[0]);
         let ocr = resp[0];
         if ocr.get_bit(31) {
@@ -536,6 +568,7 @@ fn read_block<T: SDIo, S: SleepOps>(io: &mut T, block: usize, buf: &mut [u8]) ->
         DataTransType::Read(buf),
     )
     .unwrap();
+    #[cfg(not(feature = "bequietpls"))]
     info!("Current FIFO count: {}", fifo_filled_cnt(io));
     Ok(buf.len())
 }
@@ -553,6 +586,7 @@ fn write_block<T: SDIo, S: SleepOps>(io: &mut T, block: usize, buf: &[u8]) -> Re
         DataTransType::Write(buf),
     )
     .unwrap();
+    #[cfg(not(feature = "bequietpls"))]
     info!("Current FIFO count: {}", fifo_filled_cnt(io));
     Ok(buf.len())
 }
